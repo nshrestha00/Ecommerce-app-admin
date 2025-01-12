@@ -3,7 +3,7 @@ import axios from "axios";
 import { backendUrl, currency } from "../App";
 import { toast } from "react-toastify";
 
-const List = (token) => {
+const List = () => {
 
   const [list,setList]=useState([])
 
@@ -65,7 +65,7 @@ const List = (token) => {
       {
         list.map((item,index)=>(
           <div className="grid grid-cols-[1fr_3fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm" key={index}>
-          <img className="w-12 h-12 object-cover" src={item.image[0]} alt={item.name} />
+          <img className="w-12 h-12 object-contain" src={item.image[0]} alt={item.name} />
           <p>{item.name}</p>
           <p>{item.category}</p>
           <p>{currency}{item.price}</p>
