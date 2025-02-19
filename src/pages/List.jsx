@@ -26,22 +26,30 @@ const List = () => {
     }
   }
 
-  const removeProduct= async(id)=>{
+  const removeProduct = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this product?");
+    
+    if (!confirmDelete) return; // Stop execution if user cancels
+    
     try {
       const token = localStorage.getItem("token");
-      const response= await axios.post(`${backendUrl}/api/product/remove`,{id},{headers:{token}})
-
-      if(response.data.success){
-        toast.success(response.data.message)
+      const response = await axios.post(
+        `${backendUrl}/api/product/remove`,
+        { id },
+        { headers: { token } }
+      );
+  
+      if (response.data.success) {
+        toast.success(response.data.message);
         await fetchList();
-      }else{
-        toast.error(response.data.message)
+      } else {
+        toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.log(error);
+      toast.error(error.message);
     }
-  }
+  };
 
   useEffect(()=>{
     fetchList()
