@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { assets } from "../assets/assets";
 import axios from "axios";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
+import { useParams, useNavigate } from "react-router-dom";
 
-const Add = ({ token }) => {
+const AddEditProduct = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEditMode = !!id;
+  const token = localStorage.getItem('token')
+
   const [image1, setImage1] = useState(false);
   const [image2, setImage2] = useState(false);
   const [image3, setImage3] = useState(false);
   const [image4, setImage4] = useState(false);
+  
+  const [existingImages, setExistingImages] = useState([]);
+  const [loading, setLoading] = useState(isEditMode);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -17,6 +26,61 @@ const Add = ({ token }) => {
   const [subCategory, setSubCategory] = useState("Topwear");
   const [bestseller, setBestseller] = useState(false);
   const [sizes, setSizes] = useState([]);
+
+
+  // Fetch product data if in edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchProduct = async () => {
+        try {
+          const response = await axios.post(
+            `${backendUrl}/api/product/single`,
+            { productId: id },
+            { headers: { token } }
+          );
+
+          if (response.data.success) {
+            const product = response.data.product;
+            setName(product.name);
+            setDescription(product.description);
+            setPrice(product.price);
+            setCategory(product.category);
+            setSubCategory(product.subCategory);
+            setBestseller(product.bestseller);
+            setSizes(product.sizes || []);
+            
+            // Store existing images
+            setExistingImages(product.image || []);
+            
+            setLoading(false);
+          } else {
+            toast.error(response.data.message);
+          }
+        } catch (error) {
+          console.error("Error fetching product:", error);
+          toast.error("Failed to fetch product");
+          setLoading(false);
+        }
+      };
+
+      fetchProduct();
+    }
+  }, [id, token, isEditMode]);
+
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setImage1(false);
+    setImage2(false);
+    setImage3(false);
+    setImage4(false);
+    setPrice("");
+    setCategory("Men");
+    setSubCategory("Topwear");
+    setBestseller(false);
+    setSizes([]);
+  };
+
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
@@ -31,34 +95,50 @@ const Add = ({ token }) => {
       formData.append("bestseller", bestseller);
       formData.append("sizes", JSON.stringify(sizes));
 
+      // Append new images if any
       image1 && formData.append("image1", image1);
       image2 && formData.append("image2", image2);
       image3 && formData.append("image3", image3);
       image4 && formData.append("image4", image4);
 
-      const response = await axios.post(
-        `${backendUrl}/api/product/add`,
-        formData,
-        { headers: { token } }
-      );
-     if(response.data.success){
-      toast.success(response.data.message)
-      setName('')
-      setDescription('')
-      setImage1(false)
-      setImage2(false)
-      setImage3(false)
-      setImage4(false)
-      setPrice('')
-     }else{
-      toast.error(response.data.message)
-     }
+      let response;
 
+      if (isEditMode) {
+        // Update existing product
+        response = await axios.put(
+          `${backendUrl}/api/product/update/${id}`,
+          formData,
+          { headers: { token } }
+        );
+      } else {
+        // Add new product
+        response = await axios.post(
+          `${backendUrl}/api/product/add`,
+          formData,
+          { headers: { token } }
+        );
+      }
+
+      if (response.data.success) {
+        toast.success(response.data.message);
+        
+        if (isEditMode) {
+          navigate("/list"); // Navigate back to list after edit
+        } else {
+          resetForm(); // Reset form after add
+        }
+      } else {
+        toast.error(response.data.message);
+      }
     } catch (error) {
       console.log(error);
-      toast.error(error.message)
+      toast.error(error.message);
     }
   };
+
+  if (loading) {
+    return <p className="text-center mt-10">Loading product data...</p>;
+  }
 
   return (
     <form
@@ -66,7 +146,27 @@ const Add = ({ token }) => {
       className="flex flex-col w-full items-start gap-3"
     >
       <div>
-        <p className="mb-2">Upload Image</p>
+        <p className="mb-2">Upload Image {isEditMode && "(Upload new images to replace existing ones)"}</p>
+        
+        {/* Display existing images if in edit mode */}
+        {isEditMode && existingImages.length > 0 && (
+          <div className="mb-3">
+            <p className="mb-2">Current Images:</p>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {existingImages.map((img, index) => (
+                <div key={index} className="relative">
+                  <img
+                    className="w-20 h-20 object-cover"
+                    src={img}
+                    alt={`Product ${index + 1}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Upload new images section */}
         <div className="flex gap-2">
           {[image1, image2, image3, image4].map((image, index) => (
             <label key={index} htmlFor={`image${index + 1}`}>
@@ -125,6 +225,7 @@ const Add = ({ token }) => {
         <div>
           <p className="mb-2">Product Category</p>
           <select
+            value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-3 py-2"
           >
@@ -137,6 +238,7 @@ const Add = ({ token }) => {
         <div>
           <p className="mb-2">Sub Category</p>
           <select
+            value={subCategory}
             onChange={(e) => setSubCategory(e.target.value)}
             className="w-full px-3 py-2"
           >
@@ -154,6 +256,7 @@ const Add = ({ token }) => {
             className="w-full px-3 py-2 sm:w-[120px]"
             type="number"
             placeholder="25"
+            required
           />
         </div>
       </div>
@@ -197,10 +300,10 @@ const Add = ({ token }) => {
       </div>
 
       <button className="w-28 py-3 mt-4 bg-black text-white" type="submit">
-        ADD
+        {isEditMode ? "UPDATE" : "ADD"}
       </button>
     </form>
   );
 };
 
-export default Add;
+export default AddEditProduct;

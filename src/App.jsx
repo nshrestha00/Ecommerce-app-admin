@@ -17,9 +17,14 @@ export const currency = '$'
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem('token') || "");
 
-  useEffect(() => {
-    localStorage.setItem('token', token)
-  }, [token])
+ useEffect(()=> {
+  const token = localStorage.getItem('token')
+  if(token){
+   setToken(token)
+  }
+ },[])
+
+ console.log('value of toekn in parent is: ',token)
 
   return (
     <div className="bg-gray-50 min-h-screen">
